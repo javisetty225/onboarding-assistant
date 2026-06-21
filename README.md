@@ -65,13 +65,11 @@ the pipeline still runs end to end.
 
 ## Run it
 
-Requires Python 3.11+. First `ingest` downloads a small embedding model.
+Requires Python 3.13+.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e .                 # deps come from pyproject.toml
-
-cp .env.example .env             # add your ANTHROPIC_API_KEY
 
 python -m backend.ingest         # builds the vector index from docs/
 uvicorn backend.main:app --reload
