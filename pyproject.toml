@@ -7,8 +7,14 @@ requires-python = ">=3.13"
 authors = [
   { name = "Nagaraju Javisetty", email = "nagajavisetty143@gmail.com" }
 ]
-dependencies = []
+dependencies = [
+    "chromadb==1.5.9",
+    "sentence-transformers==5.6.0"
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
