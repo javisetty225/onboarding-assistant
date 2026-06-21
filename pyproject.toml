@@ -1,0 +1,14 @@
+[project]
+name = "payrails-onboarding-assistant"
+version = "0.1.0"
+description = "Conflict-aware Q&A assistant that gives new engineers reliable, cited answers from the onboarding docs."
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+  { name = "Nagaraju Javisetty", email = "nagajavisetty143@gmail.com" }
+]
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
