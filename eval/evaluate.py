@@ -5,8 +5,10 @@ Run: python -m eval.evaluate
 
 import json
 import statistics
+import sys
 from pathlib import Path
 
+from backend import config
 from backend.answerer import answer
 
 GOLDEN = Path(__file__).parent / "golden_set.json"
@@ -23,6 +25,16 @@ def _has_any(text, kws):
 
 
 def run():
+    if not config.ANTHROPIC_API_KEY:
+        print(
+            "WARNING: ANTHROPIC_API_KEY is not set.\n"
+            "The eval is running in retrieval-only fallback mode, which does NOT\n"
+            "exercise conflict resolution or answer generation — conflict recall\n"
+            "and correctness will look near-zero. Set the key to reproduce the\n"
+            "reported metrics.\n",
+            file=sys.stderr,
+        )
+
     cases = json.loads(GOLDEN.read_text())["cases"]
     correct = safe = cite_hit = 0
     c_tp = c_fp = c_fn = 0

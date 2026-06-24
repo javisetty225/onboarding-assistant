@@ -45,13 +45,20 @@ question
    │           2. on disagreement -> resolve by authority, then recency
    │           3. cite sources  4. flag the conflict  5. report confidence
    ▼
+[ ground ]    citations are reconciled against the chunks we actually
+   │           retrieved: dates/owners are overwritten with ground truth and
+   │           any citation to a doc we didn't fetch is dropped (no fake receipts).
+   ▼
 { answer, confidence, citations[], conflicts[] }
 ```
 
 The conflict logic lives in two auditable places:
 
-- **`backend/config.py` -> `AUTHORITY_RANK`** — the org's tribal knowledge made
-  explicit (org rules and the change-log outrank the catalog and team docs).
+- **`backend/config.py` -> tiers + `DOC_TIER`** — authority is assigned by
+  *document type* (org-rule > platform > reference > catalog/team > legacy), not
+  by hand-picked per-file numbers, so a new doc inherits the authority of its
+  kind. A doc can also self-declare with an `Authority: <n>` field in its header,
+  which means adding a new authoritative source needs **no code change**.
 - **`backend/prompts.py` -> `SYSTEM_PROMPT`** — the policy: authority first,
   recency second, always cite, always surface the loser. Confidence drops to
   `medium` when authority has to override a *newer* source (e.g. deploy timing),
@@ -65,14 +72,18 @@ the pipeline still runs end to end.
 
 ## Run it
 
-Requires Python 3.13+.
+Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/). Dependencies are
+declared in `pyproject.toml` (and pinned in `uv.lock`).
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e .                 # deps come from pyproject.toml
+uv sync                                  # creates .venv and installs from pyproject.toml / uv.lock
 
-python -m backend.ingest         # builds the vector index from docs/
-uvicorn backend.main:app --reload
+# Optional: set your key so answers are generated (not just retrieved).
+# Without it the app still runs, in retrieval-only fallback mode.
+echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+
+uv run python -m backend.ingest          # builds the vector index from docs/
+uv run uvicorn backend.main:app --reload
 # open http://localhost:8000   (interactive API docs at /docs)
 ```
 
@@ -81,8 +92,12 @@ warm requests are ~5-8s.
 
 ## Measure it
 
+The eval calls the real answerer, so it needs `ANTHROPIC_API_KEY` set — without
+it the harness runs in retrieval-only fallback (no conflict resolution) and the
+numbers below won't reproduce. It warns you if the key is missing.
+
 ```bash
-python -m eval.evaluate
+uv run python -m eval.evaluate
 ```
 
 Current results on the 10-question golden set:

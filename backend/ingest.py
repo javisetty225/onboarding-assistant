@@ -9,16 +9,22 @@ from chromadb.utils import embedding_functions
 from . import config
 
 META_RE = re.compile(
-    r"Last updated:\s*(?P<date>\d{4}-\d{2}-\d{2}).*?Owner:\s*(?P<owner>[^_\n]+)",
+    r"Last updated:\s*(?P<date>\d{4}-\d{2}-\d{2}).*?Owner:\s*(?P<owner>[^_\n·]+)",
     re.IGNORECASE | re.DOTALL,
 )
+# Optional self-declared authority, e.g. "... · Authority: 1 ..." in the header.
+AUTH_RE = re.compile(r"Authority:\s*(?P<rank>\d+)", re.IGNORECASE)
 
 
-def parse_metadata(text: str) -> tuple[str | None, str | None]:
+def parse_metadata(text: str) -> tuple[str | None, str | None, int | None]:
     m = META_RE.search(text)
     if not m:
-        return None, None
-    return m.group("date").strip(), m.group("owner").strip().rstrip("_").strip()
+        return None, None, None
+    date = m.group("date").strip()
+    owner = m.group("owner").strip().rstrip("_").strip()
+    a = AUTH_RE.search(text[: m.end() + 80])  # only trust it near the header
+    declared = int(a.group("rank")) if a else None
+    return date, owner, declared
 
 
 def split_sections(text: str) -> list[tuple[str, str]]:
@@ -64,7 +70,8 @@ def build_index(docs_dir: Path | None = None) -> int:
     ids, documents, metadatas = [], [], []
     for path in sorted(docs_dir.glob("*.md")):
         text = path.read_text(encoding="utf-8")
-        last_updated, owner = parse_metadata(text)
+        last_updated, owner, declared = parse_metadata(text)
+        rank = config.authority_for(path.name, declared)
         for idx, (heading, body) in enumerate(split_sections(text)):
             ids.append(f"{path.name}::{idx}")
             documents.append(body)
@@ -74,7 +81,7 @@ def build_index(docs_dir: Path | None = None) -> int:
                     "heading": heading,
                     "owner": owner or "unknown",
                     "last_updated": last_updated or "unknown",
-                    "authority_rank": config.AUTHORITY_RANK.get(path.name, 9),
+                    "authority_rank": rank,
                 }
             )
 
